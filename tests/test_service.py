@@ -64,7 +64,7 @@ def unreachable_engine_instance_fixture(httpserver: HTTPServer):
 def app_with_reachable_engine_instance(reachable_engine_instance: HTTPServer):
     def get_settings_override():
         settings = get_settings()
-        settings.engine_urls = reachable_engine_instance.url_for("")
+        settings.engine_urls = [reachable_engine_instance.url_for("")]
         settings.engine_announce_retries = 2
         settings.engine_announce_retry_delay = 1
         settings.max_tasks = 2
@@ -83,7 +83,7 @@ def app_with_reachable_engine_instance(reachable_engine_instance: HTTPServer):
 def app_with_unreachable_engine_instance(unreachable_engine_instance: HTTPServer):
     def get_settings_override():
         settings = get_settings()
-        settings.engine_urls = unreachable_engine_instance.url_for("")
+        settings.engine_urls = [unreachable_engine_instance.url_for("")]
         settings.engine_announce_retries = 2
         settings.engine_announce_retry_delay = 1
         settings.max_tasks = 2
@@ -111,10 +111,11 @@ def test_announce_to_reachable_engine(
         # This is not a good way to test the app as any other warnings will make the test
         # passes.
         warning_logs_found = False
-        # for record in caplog.records:
-        #    if record.levelname == "WARNING":
-        #        warning_logs_found = True
-        #        break
+        for record in caplog.records:
+            if record.levelname == "WARNING":
+                if "Failed to notify the engine" in record.message:
+                    warning_logs_found = True
+                    break
 
         assert not warning_logs_found
 
@@ -134,8 +135,9 @@ def test_announce_to_unreachable_engine(
         warning_logs_found = False
         for record in caplog.records:
             if record.levelname == "WARNING":
-                warning_logs_found = True
-                break
+                if "Failed to notify the engine" in record.message:
+                    warning_logs_found = True
+                    break
 
         assert warning_logs_found
 

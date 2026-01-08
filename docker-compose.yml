@@ -10,7 +10,7 @@ services:
           echo '.venv exists and is not empty'; 
         else 
           echo '.venv does not exist or is empty'; 
-          python3.10 -m venv .venv; 
+          python3.11 -m venv .venv;
         fi &&
         # Activate the virtual environment
         source .venv/bin/activate &&
@@ -23,6 +23,8 @@ services:
     environment:
       - ENGINE_URLS=["http://host.docker.internal:8080"]
       - SERVICE_URL=http://host.docker.internal:${SERVICE_PORT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - ${SERVICE_PORT}:9090
     working_dir: /workspaces/service

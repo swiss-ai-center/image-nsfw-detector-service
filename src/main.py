@@ -75,14 +75,19 @@ class MyService(Service):
             docs_url="https://docs.swiss-ai-center.ch/reference/services/image-nsfw-detector/",
         )
         self._logger = get_logger(settings)
-        # read the ai model here
+
+        # Load the base model
         self._logger.info("Loading the base model...")
         self._base_model = tf.keras.applications.mobilenet_v2.MobileNetV2(
             include_top=False,
             weights='imagenet',
             input_shape=(IMG_SIZE, IMG_SIZE, CHANNELS))
+
         self._logger.info("Base model loaded. Recreating structure of model before loading fine-tuned weights...")
+
+        # Create model using functional API or by adding base_model layers directly
         self._nsfw_model = tf.keras.Sequential([
+            tf.keras.layers.InputLayer(input_shape=(IMG_SIZE, IMG_SIZE, CHANNELS)),
             self._base_model,
             tf.keras.layers.GlobalAveragePooling2D(),
             tf.keras.layers.Dense(16),
@@ -91,6 +96,10 @@ class MyService(Service):
             tf.keras.layers.Dense(N_CLASSES),
             tf.keras.layers.Activation('softmax')
         ], name='MNV2')
+
+        # Build the model before loading weights
+        self._nsfw_model.build((None, IMG_SIZE, IMG_SIZE, CHANNELS))
+
         self._logger.info('Loading weights from file: {}'.format(WEIGHT_FILE))
         self._nsfw_model.load_weights(WEIGHT_FILE)
         self._logger.info('Weights loaded.')
@@ -224,7 +233,7 @@ app = FastAPI(
     lifespan=lifespan,
     title="NSFW Image Detection API.",
     description=api_description,
-    version="0.2.1",
+    version="1.0.0",
     contact={
         "name": "Swiss AI Center",
         "url": "https://swiss-ai-center.ch/",
