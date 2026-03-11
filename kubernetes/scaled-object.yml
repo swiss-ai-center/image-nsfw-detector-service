@@ -1,0 +1,17 @@
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: my-service-scaledobject
+spec:
+  hosts:
+  - my-service.example.com
+  scaleTargetRef:
+    name: my-service-stateful
+    kind: StatefulSet
+    service: my-service-service
+    port: 9090
+
+  replicas:
+    min: 0
+    max: 2
+  scaledownPeriod: 86400 # 24 hours
