@@ -24,6 +24,10 @@ env:
   DEV_LOG_LEVEL: ${{ vars.DEV_LOG_LEVEL }}
   # Kube configuration
   DEV_KUBE_CONFIG: ${{ secrets.DEV_KUBE_CONFIG }}
+  # Keda service
+  DEV_KEDA_SERVICE: ${{ vars.DEV_KEDA_SERVICE }}
+  # Keda port
+  DEV_KEDA_PORT: ${{ vars.DEV_KEDA_PORT }}
 
   ## Production environment variables
   # The URLs of the Core Engine to which the service should connect
@@ -42,6 +46,10 @@ env:
   PROD_LOG_LEVEL: ${{ vars.PROD_LOG_LEVEL }}
   # Kube configuration
   PROD_KUBE_CONFIG: ${{ secrets.PROD_KUBE_CONFIG }}
+  # Keda service
+  PROD_KEDA_SERVICE: ${{ vars.PROD_KEDA_SERVICE }}
+  # Keda port
+  PROD_KEDA_PORT: ${{ vars.PROD_KEDA_PORT }}
 
 # Allow one concurrent deployment
 concurrency:
@@ -133,6 +141,7 @@ jobs:
           max-tasks: ${{ env.DEV_MAX_TASKS }}
           engine-announce-retries: ${{ env.DEV_ENGINE_ANNOUNCE_RETRIES }}
           engine-announce-retry-delay: ${{ env.DEV_ENGINE_ANNOUNCE_RETRY_DELAY }}
+          keda-service: ${{ env.DEV_KEDA_SERVICE }}
 
       - name: Remove unnecessary keys from configuration files
         uses: swiss-ai-center/common-code/.github/actions/remove-unnecessary-keys-from-kubernetes-configuration-files@main
@@ -151,6 +160,11 @@ jobs:
               -f stateful.yml \
               -f service.yml \
               -f ingress.yml
+            # add scaledobject.yml if DEV_KEDA_SERVICE is set
+            if [ -n "${{ env.DEV_KEDA_SERVICE }}" ]; then
+              echo "Applying scaled-object.yml"
+              kubectl --namespace ${{ env.DEV_NAMESPACE }} apply -f scaled-object.yml
+            fi
 
   deploy-prod:
     needs: release
@@ -180,8 +194,9 @@ jobs:
           max-tasks: ${{ env.PROD_MAX_TASKS }}
           engine-announce-retries: ${{ env.PROD_ENGINE_ANNOUNCE_RETRIES }}
           engine-announce-retry-delay: ${{ env.PROD_ENGINE_ANNOUNCE_RETRY_DELAY }}
+          keda-service: ${{ env.PROD_KEDA_SERVICE }}
 
-      - name: Deploy services on the Kubernetes cluster
+      - name: Deploy service on the Kubernetes cluster
         uses: swiss-ai-center/common-code/.github/actions/execute-command-on-kubernetes-cluster@main
         with:
           kube-config: ${{ env.PROD_KUBE_CONFIG }}
@@ -193,3 +208,8 @@ jobs:
               -f stateful.yml \
               -f service.yml \
               -f ingress.yml
+            # add scaledobject.yml if PROD_KEDA_SERVICE is set
+            if [ -n "${{ env.PROD_KEDA_SERVICE }}" ]; then
+              echo "Applying scaled-object.yml"
+              kubectl --namespace ${{ env.PROD_NAMESPACE }} apply -f scaled-object.yml
+            fi
