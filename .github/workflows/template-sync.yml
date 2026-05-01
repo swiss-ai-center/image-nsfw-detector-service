@@ -16,21 +16,35 @@ jobs:
       pull-requests: write
 
     steps:
-      # Checkout the current repository using the PAT so it has workflow permissions
+      # Checkout the dev branch with full history
       - name: Checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.TEMPLATE_SYNC_PAT }}
+          ref: dev
+          fetch-depth: 0
 
-      # Run the template sync action
+      # Force Git to attach to the dev branch locally
+      - name: Attach detached HEAD to dev branch
+        run: git checkout -B dev
+
+      # Run the template sync action and assign an ID to capture its outputs
       - name: actions-template-sync
+        id: sync
         uses: AndreasAugustin/actions-template-sync@v2
         env:
-          # Force the GitHub CLI inside the action to use your PAT for pushing to the target repo
           GITHUB_TOKEN: ${{ secrets.TEMPLATE_SYNC_PAT }}
         with:
           source_repo_path: swiss-ai-center/create-a-new-service-generic-template
           upstream_branch: main
           pr_labels: template-sync,automated-pr
-          # Use the PAT for reading the source repository
           source_gh_token: ${{ secrets.TEMPLATE_SYNC_PAT }}
+
+      # Automatically change the PR target branch to dev using the GitHub CLI
+      - name: Change PR base branch to dev
+        if: steps.sync.outputs.pr_branch != ''
+        env:
+          # The GitHub CLI requires the GH_TOKEN environment variable
+          GH_TOKEN: ${{ secrets.TEMPLATE_SYNC_PAT }}
+        run: |
+          gh pr edit ${{ steps.sync.outputs.pr_branch }} --base dev
